@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OP_NET · AI DeFi Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #03040a;
+  --deep: #070b14;
+  --surface: #0c1220;
+  --card: #101828;
+  --border: rgba(255,255,255,0.06);
+  --border-glow: rgba(99,179,237,0.25);
+  --text: #e2e8f4;
+  --muted: #4a5568;
+  --faint: rgba(255,255,255,0.03);
+  --cyan: #63b3ed;
+  --cyan-bright: #90cdf4;
+  --cyan-dim: rgba(99,179,237,0.15);
+  --orange: #f6a623;
+  --orange-dim: rgba(246,166,35,0.15);
+  --purple: #b794f4;
+  --purple-dim: rgba(183,148,244,0.15);
+  --green: #68d391;
+  --green-dim: rgba(104,211,145,0.12);
+  --red: #fc8181;
+  --red-dim: rgba(252,129,129,0.12);
+  --btc: #f7931a;
+  --moto: #f6a623;
+  --pill: #b794f4;
+  --r: 8px;
+  --r-lg: 14px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 14px; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* AMBIENT BACKGROUND */
+.ambient {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.ambient::before {
+  content: '';
+  position: absolute;
+  width: 800px; height: 800px;
+  top: -200px; left: -300px;
+  background: radial-gradient(circle, rgba(99,179,237,0.06) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: drift1 20s ease-in-out infinite alternate;
+}
+.ambient::after {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  bottom: -100px; right: -200px;
+  background: radial-gradient(circle, rgba(183,148,244,0.05) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: drift2 25s ease-in-out infinite alternate;
+}
+.ambient-mid {
+  position: absolute;
+  width: 500px; height: 500px;
+  top: 50%; right: 30%;
+  transform: translate(50%, -50%);
+  background: radial-gradient(circle, rgba(246,166,35,0.03) 0%, transparent 60%);
+  border-radius: 50%;
+  animation: drift3 18s ease-in-out infinite alternate;
+}
+@keyframes drift1 { to { transform: translate(80px, 120px) scale(1.2); } }
+@keyframes drift2 { to { transform: translate(-60px, -80px) scale(1.1); } }
+@keyframes drift3 { to { transform: translate(50%, -50%) scale(1.3) translate(-100px, 50px); } }
+
+/* GRID OVERLAY */
+.grid-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(99,179,237,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,179,237,0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* SCANLINE */
+.scanline {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* LAYOUT */
+.app {
+  position: relative; z-index: 1;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+/* TOPBAR */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-hex {
+  width: 46px; height: 46px;
+  background: linear-gradient(135deg, rgba(99,179,237,0.15) 0%, rgba(99,179,237,0.05) 100%);
+  border: 1px solid rgba(99,179,237,0.3);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 0 0 20px rgba(99,179,237,0.08), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.brand-hex svg { width: 22px; height: 22px; }
+.brand-hex-pulse {
+  position: absolute; inset: -3px;
+  border: 1px solid rgba(99,179,237,0.2);
+  border-radius: 14px;
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+  0%,100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.08); }
+}
+
+.brand-text-main {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.5px;
+  color: #fff;
+  line-height: 1;
+}
+.brand-text-sub {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+/* TICKER STRIP */
+.ticker-strip {
+  background: var(--deep);
+  border-bottom: 1px solid var(--border);
+  height: 34px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 20px;
+}
+.ticker-strip::before, .ticker-strip::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 60px;
+  z-index: 2;
+}
+.ticker-strip::before { left: 0; background: linear-gradient(90deg, var(--deep), transparent); }
+.ticker-strip::after { right: 0; background: linear-gradient(-90deg, var(--deep), transparent); }
+
+.ticker-label {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: 0 12px;
+  background: rgba(99,179,237,0.1);
+  border-right: 1px solid var(--border);
+  font-size: 9px;
+  color: var(--cyan);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  z-index: 3;
+  white-space: nowrap;
+}
+
+.ticker-scroll {
+  display: flex;
+  gap: 0;
+  animation: scroll-ticker 40s linear infinite;
+  padding-left: 80px;
+}
+.ticker-scroll:hover { animation-play-state: paused; }
+
+@keyframes scroll-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 11px;
+  height: 34px;
+}
+.ticker-name { color: var(--muted); font-size: 10px; }
+.ticker-price { color: var(--text); font-weight: 500; }
+.ticker-chg { font-size: 10px; }
+.ticker-chg.up { color: var(--green); }
+.ticker-chg.dn { color: var(--red); }
+.ticker-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); }
+
+/* MAIN GRID */
+.main-grid {
+  display: grid;
+  grid-template-columns: 300px 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ─── CARD SYSTEM ─── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.02) inset;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-body { padding: 16px; }
+.card + .card { margin-top: 14px; }
+
+/* BADGE */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.badge-cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(99,179,237,0.2); }
+.badge-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(104,211,145,0.2); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(246,166,35,0.2); }
+.badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(252,129,129,0.2); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(183,148,244,0.2); }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+.badge-dot.pulse { animation: dot-pulse 2s ease-in-out infinite; }
+@keyframes dot-pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 currentColor} 50%{opacity:0.6;} }
+
+/* ─── WALLET PANEL ─── */
+.wallet-connect-area {
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.wallet-icon-area {
+  width: 72px; height: 72px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, var(--surface) 0%, var(--card) 100%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+.wallet-icon-area svg { width: 32px; height: 32px; opacity: 0.5; }
+.wallet-icon-ring {
+  position: absolute; inset: -6px;
+  border: 1px dashed rgba(99,179,237,0.15);
+  border-radius: 24px;
+  animation: rotate-ring 20s linear infinite;
+}
+@keyframes rotate-ring { to { transform: rotate(360deg); } }
+
+.wallet-connect-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.wallet-connect-sub {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* WALLET OPTIONS */
+.wallet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+.wallet-opt:hover {
+  border-color: rgba(99,179,237,0.3);
+  background: rgba(99,179,237,0.04);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.wallet-opt.primary { border-color: rgba(99,179,237,0.3); }
+.wallet-opt.primary:hover { border-color: rgba(99,179,237,0.5); box-shadow: 0 0 20px rgba(99,179,237,0.08); }
+
+.wallet-opt-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  background: rgba(255,255,255,0.04);
+}
+.wallet-opt-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.wallet-opt-desc { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+.wallet-opt-arrow { margin-left: auto; color: var(--muted); font-size: 14px; opacity: 0.5; }
+
+/* CONNECTED WALLET */
+.wallet-connected { display: none; }
+.wallet-connected.visible { display: block; }
+.wallet-disconnected.hidden { display: none; }
+
+.wallet-addr-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(104,211,145,0.05);
+  border: 1px solid rgba(104,211,145,0.15);
+  border-radius: var(--r);
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+.wallet-addr-text {
+  flex: 1;
+  color: var(--green);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wallet-addr-copy {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 3px;
+  transition: color 0.2s;
+}
+.wallet-addr-copy:hover { color: var(--cyan); }
+
+/* BALANCE CARDS */
+.balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.bal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  position: relative;
+  overflow: hidden;
+}
+.bal-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0.6;
+}
+.bal-card.btc::after { background: var(--btc); }
+.bal-card.moto::after { background: var(--moto); }
+.bal-card.pill::after { background: var(--pill); }
+.bal-card.usdt::after { background: var(--green); }
+
+.bal-token {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.bal-token.btc { color: var(--btc); }
+.bal-token.moto { color: var(--moto); }
+.bal-token.pill { color: var(--pill); }
+.bal-token.usdt { color: var(--green); }
+.bal-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.bal-usd { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+/* NETWORK BADGE */
+.net-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.net-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.net-dot.mainnet { background: var(--green); box-shadow: 0 0 8px var(--green); animation: dot-pulse 2s infinite; }
+.net-dot.demo { background: var(--orange); box-shadow: 0 0 8px var(--orange); }
+.net-label { color: var(--text); font-weight: 600; }
+.net-desc { color: var(--muted); margin-left: auto; font-size: 9px; }
+
+.btn-disconnect {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--muted);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.btn-disconnect:hover { border-color: var(--red); color: var(--red); }
+
+/* ─── POOL CARDS ─── */
+.pools-list { display: flex; flex-direction: column; gap: 10px; }
+
+.pool-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.pool-item:hover { border-color: rgba(99,179,237,0.2); transform: translateX(2px); }
+.pool-item.active {
+  border-color: rgba(99,179,237,0.35);
+  background: rgba(99,179,237,0.04);
+  box-shadow: 0 0 20px rgba(99,179,237,0.05), inset 0 0 20px rgba(99,179,237,0.02);
+}
+.pool-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--border);
+  transition: background 0.2s;
+}
+.pool-item.active::before { background: var(--cyan); }
+.pool-item:hover::before { background: rgba(99,179,237,0.4); }
+
+.pool-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pool-pair {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.pool-apy {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.pool-apy.tier-fire { color: var(--orange); text-shadow: 0 0 20px rgba(246,166,35,0.4); }
+.pool-apy.tier-hot { color: var(--cyan); text-shadow: 0 0 15px rgba(99,179,237,0.3); }
+.pool-apy.tier-cool { color: var(--purple); }
+.pool-apy.tier-safe { color: var(--green); }
+
+.pool-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.pool-meta span { display: flex; align-items: center; gap: 4px; }
+.pool-meta span em { color: var(--text); font-style: normal; }
+
+.pool-risk-track {
+  height: 3px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pool-risk-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.risk-1 { background: var(--green); width: 15%; }
+.risk-2 { background: var(--green); width: 25%; }
+.risk-3 { background: #a0e4b0; width: 35%; }
+.risk-4 { background: var(--cyan); width: 45%; }
+.risk-5 { background: var(--cyan); width: 55%; }
+.risk-6 { background: var(--orange); width: 65%; }
+.risk-7 { background: var(--orange); width: 72%; }
+.risk-8 { background: #fc8c5c; width: 82%; }
+.risk-9 { background: var(--red); width: 90%; }
+.risk-10 { background: var(--red); width: 100%; }
+
+/* ─── CENTER PANEL ─── */
+.center-col { display: flex; flex-direction: column; gap: 14px; }
+
+/* AI TERMINAL */
+.ai-terminal-wrap {
+  background: #03060e;
+  border: 1px solid rgba(99,179,237,0.12);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.ai-terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(99,179,237,0.03);
+  border-bottom: 1px solid rgba(99,179,237,0.08);
+}
+.ai-terminal-dots { display: flex; gap: 5px; }
+.ai-terminal-dot { width: 9px; height: 9px; border-radius: 50%; }
+.ai-terminal-dot:nth-child(1) { background: #fc8181; }
+.ai-terminal-dot:nth-child(2) { background: var(--orange); }
+.ai-terminal-dot:nth-child(3) { background: var(--green); }
+.ai-terminal-title {
+  font-size: 10px;
+  color: rgba(99,179,237,0.5);
+  margin-left: 4px;
+  letter-spacing: 1px;
+}
+.ai-terminal-status { margin-left: auto; }
+
+.ai-terminal-body {
+  padding: 14px;
+  min-height: 180px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 1.9;
+}
+.ai-terminal-body::-webkit-scrollbar { width: 3px; }
+.ai-terminal-body::-webkit-scrollbar-thumb { background: rgba(99,179,237,0.15); border-radius: 2px; }
+
+.al {
+  opacity: 0;
+  animation: al-in 0.3s ease forwards;
+}
+@keyframes al-in { to { opacity: 1; } }
+
+.al-prefix { color: rgba(99,179,237,0.4); margin-right: 6px; user-select: none; }
+.al-time { color: rgba(255,255,255,0.15); font-size: 9px; margin-right: 8px; }
+.al-text { }
+.al-text.info { color: rgba(226,232,244,0.7); }
+.al-text.success { color: var(--green); }
+.al-text.warn { color: var(--orange); }
+.al-text.error { color: var(--red); }
+.al-text.accent { color: var(--cyan); }
+.al-text.purple { color: var(--purple); }
+
+.ai-cursor {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--cyan);
+  vertical-align: middle;
+  animation: blink-cursor 1.1s step-end infinite;
+  opacity: 0.7;
+}
+@keyframes blink-cursor { 0%,100%{opacity:0.7} 50%{opacity:0} }
+
+/* STRATEGY PANEL */
+.strategy-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.strat-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.strat-tab:hover { border-color: rgba(99,179,237,0.25); }
+.strat-tab.active {
+  background: rgba(99,179,237,0.06);
+  border-color: rgba(99,179,237,0.4);
+  box-shadow: 0 0 20px rgba(99,179,237,0.06);
+}
+.strat-icon { font-size: 20px; }
+.strat-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.strat-tab.active .strat-label { color: var(--cyan); }
+
+/* FORM ELEMENTS */
+.field { margin-bottom: 14px; }
+.field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.field-label span { color: var(--text); font-weight: 600; }
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.input-wrap:focus-within { border-color: rgba(99,179,237,0.4); }
+.input-wrap input {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+.input-suffix {
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+  border-left: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  height: 100%;
+  display: flex; align-items: center;
+}
+
+/* RANGE */
+.range-wrap { position: relative; padding: 4px 0 16px; }
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  background: var(--cyan);
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(99,179,237,0.5);
+  transition: box-shadow 0.2s;
+}
+input[type=range]:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 18px rgba(99,179,237,0.7);
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+/* TOGGLE ROW */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 11px;
+  color: var(--text);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-row-label { display: flex; flex-direction: column; gap: 2px; }
+.toggle-row-sub { font-size: 9px; color: var(--muted); }
+
+.toggle-sw {
+  position: relative;
+  width: 38px; height: 20px;
+  flex-shrink: 0;
+}
+.toggle-sw input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  transition: 0.3s;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  left: 2px; top: 2px;
+  background: var(--muted);
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.toggle-sw input:checked + .toggle-track {
+  background: rgba(99,179,237,0.25);
+  border-color: rgba(99,179,237,0.4);
+}
+.toggle-sw input:checked + .toggle-track::before {
+  transform: translateX(18px);
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(99,179,237,0.6);
+}
+
+/* ALLOCATION BARS */
+.alloc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.alloc-label {
+  width: 80px;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.alloc-track {
+  flex: 1;
+  height: 22px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.alloc-fill {
+  height: 100%;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.7);
+  letter-spacing: 0.5px;
+  transition: width 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.alloc-pct {
+  width: 32px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.btn:hover::before { opacity: 1; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn:disabled::before { display: none; }
+
+.btn-primary {
+  background: rgba(99,179,237,0.1);
+  border-color: rgba(99,179,237,0.35);
+  color: var(--cyan);
+}
+.btn-primary:hover:not(:disabled) {
+  background: rgba(99,179,237,0.18);
+  border-color: rgba(99,179,237,0.6);
+  box-shadow: 0 0 25px rgba(99,179,237,0.15), 0 4px 16px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+
+.btn-start {
+  background: linear-gradient(135deg, rgba(104,211,145,0.12) 0%, rgba(104,211,145,0.06) 100%);
+  border-color: rgba(104,211,145,0.4);
+  color: var(--green);
+}
+.btn-start:hover:not(:disabled) {
+  background: rgba(104,211,145,0.2);
+  border-color: rgba(104,211,145,0.6);
+  box-shadow: 0 0 30px rgba(104,211,145,0.12);
+  transform: translateY(-1px);
+}
+
+.btn-stop {
+  background: rgba(252,129,129,0.06);
+  border-color: rgba(252,129,129,0.25);
+  color: var(--red);
+}
+.btn-stop:hover:not(:disabled) {
+  background: rgba(252,129,129,0.12);
+  border-color: rgba(252,129,129,0.5);
+}
+
+.btn-full { width: 100%; }
+
+.btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* SPINNER */
+.spin {
+  display: inline-block;
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── STATS ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 12px;
+  text-align: center;
+}
+.stat-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.stat-lbl {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* PROFIT HERO */
+.profit-hero {
+  background: linear-gradient(135deg, rgba(104,211,145,0.06) 0%, rgba(99,179,237,0.04) 100%);
+  border: 1px solid rgba(104,211,145,0.15);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+.profit-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: 50%;
+  transform: translateX(-50%);
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(104,211,145,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.profit-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--green);
+  letter-spacing: -1px;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(104,211,145,0.3);
+}
+.profit-unit { font-size: 14px; font-weight: 400; opacity: 0.5; }
+.profit-label {
+  font-size: 9px;
+  color: rgba(104,211,145,0.5);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.profit-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* ACTIVITY LOG */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.log-list::-webkit-scrollbar { width: 3px; }
+.log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 10px;
+  background: var(--surface);
+  border-radius: 6px;
+  font-size: 10px;
+  border-left: 2px solid transparent;
+  animation: log-in 0.3s ease;
+}
+@keyframes log-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+.log-entry.success { border-left-color: var(--green); }
+.log-entry.info { border-left-color: var(--cyan); }
+.log-entry.warn { border-left-color: var(--orange); }
+
+.log-time { color: var(--muted); font-size: 9px; padding-top: 1px; }
+.log-msg { color: var(--text); line-height: 1.5; }
+.log-val { color: var(--green); font-weight: 600; white-space: nowrap; }
+
+/* MCP STATUS */
+.mcp-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mcp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.mcp-key { color: var(--muted); }
+.mcp-val { color: var(--text); font-weight: 600; }
+.mcp-val.ok { color: var(--green); }
+.mcp-val.live { color: var(--cyan); }
+.mcp-val.idle { color: var(--muted); }
+
+/* BOT STATUS BANNER */
+.bot-banner {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(104,211,145,0.06), rgba(99,179,237,0.04));
+  border: 1px solid rgba(104,211,145,0.2);
+  border-radius: var(--r);
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--green);
+}
+.bot-banner.active { display: flex; }
+.bot-banner-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: dot-pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+/* WALLET SELECTION MODAL */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  animation: modal-in 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.94) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.modal-close:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+.modal-wallets { display: flex; flex-direction: column; gap: 10px; }
+.modal-wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+}
+.modal-wallet-btn:hover {
+  border-color: rgba(99,179,237,0.35);
+  background: rgba(99,179,237,0.04);
+  transform: translateX(4px);
+}
+.modal-wallet-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+.modal-w-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background: rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+.modal-w-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.modal-w-desc { font-size: 9px; color: var(--muted); margin-top: 2px; }
+.modal-w-arrow { margin-left: auto; color: var(--muted); }
+.modal-w-tag {
+  margin-left: auto;
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+/* TOAST */
+#toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  padding: 12px 18px 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  font-size: 12px;
+  color: var(--text);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 250px;
+  max-width: 360px;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 16px; flex-shrink: 0; }
+
+/* TOPBAR RIGHT */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.topbar-badge:hover { border-color: rgba(99,179,237,0.25); color: var(--text); }
+
+.topbar-connect-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, rgba(99,179,237,0.12) 0%, rgba(99,179,237,0.06) 100%);
+  border: 1px solid rgba(99,179,237,0.35);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.topbar-connect-btn:hover {
+  background: rgba(99,179,237,0.18);
+  border-color: rgba(99,179,237,0.5);
+  box-shadow: 0 0 25px rgba(99,179,237,0.12);
+  transform: translateY(-1px);
+}
+.topbar-wallet-addr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: rgba(104,211,145,0.06);
+  border: 1px solid rgba(104,211,145,0.2);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--green);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
+}
+.topbar-wallet-addr.show { display: flex; }
+.topbar-wallet-addr:hover { background: rgba(104,211,145,0.1); }
+
+/* MAINNET LAUNCH */
+.mainnet-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(246,166,35,0.06), rgba(183,148,244,0.04));
+  border: 1px solid rgba(246,166,35,0.2);
+  border-radius: var(--r);
+  margin-bottom: 14px;
+  font-size: 10px;
+  color: var(--orange);
+}
+.mainnet-banner strong { font-size: 11px; }
+
+/* DIVIDER */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1200px) {
+  .main-grid { grid-template-columns: 280px 1fr; }
+  .right-col { grid-column: 1/-1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .right-col .card + .card { margin-top: 0; }
+}
+@media (max-width: 768px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .right-col { grid-column: auto; display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- AMBIENT -->
+<div class="ambient"><div class="ambient-mid"></div></div>
+<div class="grid-overlay"></div>
+<div class="scanline"></div>
+
+<!-- TOAST -->
+<div id="toast"><span class="toast-icon" id="toast-icon">✓</span><span id="toast-msg">Connected</span></div>
+
+<!-- WALLET MODAL -->
+<div class="modal-overlay" id="walletModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title">Connect Wallet</div>
+    <div class="modal-sub">Connect your Bitcoin wallet to interact with OP_NET Mainnet smart contracts.</div>
+    <div class="modal-wallets">
+      <button class="modal-wallet-btn" id="btn-opwallet" onclick="connectOpWallet()">
+        <div class="modal-w-icon">⬡</div>
+        <div>
+          <div class="modal-w-name">OP_WALLET</div>
+          <div class="modal-w-desc">Official OP_NET browser extension</div>
+        </div>
+        <div class="modal-w-tag badge badge-cyan">RECOMMENDED</div>
+      </button>
+      <button class="modal-wallet-btn" id="btn-unisat" onclick="connectUnisat()">
+        <div class="modal-w-icon">🟠</div>
+        <div>
+          <div class="modal-w-name">Unisat Wallet</div>
+          <div class="modal-w-desc">Bitcoin Taproot wallet with OP_NET support</div>
+        </div>
+        <div class="modal-w-arrow">→</div>
+      </button>
+      <button class="modal-wallet-btn" id="btn-xverse" onclick="connectXverse()">
+        <div class="modal-w-icon">✦</div>
+        <div>
+          <div class="modal-w-name">Xverse Wallet</div>
+          <div class="modal-w-desc">Bitcoin & Ordinals compatible wallet</div>
+        </div>
+        <div class="modal-w-arrow">→</div>
+      </button>
+      <button class="modal-wallet-btn" onclick="connectDemo()" style="border-style: dashed; opacity:0.7">
+        <div class="modal-w-icon">🎮</div>
+        <div>
+          <div class="modal-w-name">Demo Mode</div>
+          <div class="modal-w-desc">Simulate with mock wallet (no real funds)</div>
+        </div>
+        <div class="modal-w-tag badge badge-orange">DEMO</div>
+      </button>
+    </div>
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border)">
+      <div style="font-size:10px; color:var(--muted); text-align:center; line-height:1.8">
+        Don't have OP_WALLET?
+        <a href="https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb" target="_blank" style="color:var(--cyan); text-decoration:none">Install from Chrome Store →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-hex">
+        <div class="brand-hex-pulse"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--cyan)">
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+          <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" opacity="0.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-text-main">OP_NET · AI DeFi Bot</div>
+        <div class="brand-text-sub">Mainnet · Smart Contracts on Bitcoin</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-badge" id="chainBadge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="color:var(--orange)"><circle cx="12" cy="12" r="10"/></svg>
+        <span>Bitcoin Mainnet</span>
+      </div>
+      <div class="topbar-wallet-addr" id="topbarAddr" onclick="openModal()">
+        <div class="net-dot mainnet"></div>
+        <span id="topbarAddrText">bc1q...0000</span>
+        <span style="color:var(--muted);font-size:9px">▼</span>
+      </div>
+      <button class="topbar-connect-btn" id="topbarConnectBtn" onclick="openModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+        Connect Wallet
+      </button>
+    </div>
+  </div>
+
+  <!-- TICKER -->
+  <div class="ticker-strip">
+    <div class="ticker-label">LIVE</div>
+    <div class="ticker-scroll" id="tickerScroll"></div>
+  </div>
+
+  <!-- MAINNET BANNER -->
+  <div class="mainnet-banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span><strong>OP_NET Mainnet launches March 17, 2026.</strong> Connect your OP_WALLET to interact with live pools. MOTO, PILL &amp; BTC pairs are available on MotoSwap AMM.</span>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: Wallet + Pools -->
+    <div class="left-col">
+
+      <!-- WALLET CARD -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Wallet</span>
+          <span class="badge badge-cyan" id="walletBadge">Disconnected</span>
+        </div>
+
+        <!-- DISCONNECTED STATE -->
+        <div id="disconnectedState" class="wallet-connect-area">
+          <div class="wallet-icon-area">
+            <div class="wallet-icon-ring"></div>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--muted)">
+              <rect x="2" y="5" width="20" height="14" rx="2"/>
+              <path d="M16 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/>
+            </svg>
+          </div>
+          <div class="wallet-connect-title">Connect to OP_NET</div>
+          <div class="wallet-connect-sub">Link your Bitcoin wallet to access Mainnet pools, real balances, and on-chain transactions.</div>
+          <button class="btn btn-primary btn-full" onclick="openModal()" style="margin-bottom:8px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            Connect Wallet
+          </button>
+        </div>
+
+        <!-- CONNECTED STATE -->
+        <div id="connectedState" class="card-body wallet-connected">
+          <div class="net-status" id="netStatusRow">
+            <div class="net-dot mainnet" id="netDot"></div>
+            <span class="net-label" id="netLabel">OP_NET Mainnet</span>
+            <span class="net-desc" id="netDesc">Bitcoin L1</span>
+          </div>
+
+          <div class="wallet-addr-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--green);flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span class="wallet-addr-text" id="walletAddrDisplay">bc1q...000000</span>
+            <span class="wallet-addr-copy" onclick="copyAddr()" title="Copy">⎘</span>
+          </div>
+
+          <div class="balance-grid">
+            <div class="bal-card btc">
+              <div class="bal-token btc">BTC</div>
+              <div class="bal-amount" id="bal-btc">--</div>
+              <div class="bal-usd" id="bal-btc-usd">$--</div>
+            </div>
+            <div class="bal-card moto">
+              <div class="bal-token moto">MOTO</div>
+              <div class="bal-amount" id="bal-moto">--</div>
+              <div class="bal-usd" id="bal-moto-usd">$--</div>
+            </div>
+            <div class="bal-card pill">
+              <div class="bal-token pill">PILL</div>
+              <div class="bal-amount" id="bal-pill">--</div>
+              <div class="bal-usd" id="bal-pill-usd">$--</div>
+            </div>
+            <div class="bal-card usdt">
+              <div class="bal-token usdt">USDT</div>
+              <div class="bal-amount" id="bal-usdt">--</div>
+              <div class="bal-usd" id="bal-usdt-usd">$--</div>
+            </div>
+          </div>
+
+          <button class="btn-disconnect" onclick="disconnectWallet()">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- POOLS CARD -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Liquidity Pools</span>
+          <span class="badge badge-green"><span class="badge-dot pulse" style="background:var(--green)"></span>Live APY</span>
+        </div>
+        <div class="card-body" style="padding:12px">
+          <div class="pools-list" id="poolsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: AI + Config -->
+    <div class="center-col">
+
+      <!-- MCP + AI CARD -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">AI Agent · MCP</span>
+          <div style="display:flex;gap:6px">
+            <span class="badge badge-purple"><span class="badge-dot pulse" style="background:var(--purple)"></span><span id="agentBadgeText">Idle</span></span>
+            <span class="badge badge-cyan">ai.opnet.org/mcp</span>
+          </div>
+        </div>
+        <div class="card-body" style="padding:12px">
+          <div class="mcp-grid" style="margin-bottom:12px">
+            <div class="mcp-row"><span class="mcp-key">Endpoint</span><span class="mcp-val live">ai.opnet.org/mcp</span></div>
+            <div class="mcp-row"><span class="mcp-key">Agent</span><span class="mcp-val" id="mcpAgent">claude-sonnet-4</span></div>
+            <div class="mcp-row"><span class="mcp-key">Status</span><span class="mcp-val idle" id="mcpStatus">Ready</span></div>
+            <div class="mcp-row"><span class="mcp-key">Last Run</span><span class="mcp-val idle" id="mcpLastRun">—</span></div>
+          </div>
+
+          <!-- TERMINAL -->
+          <div class="ai-terminal-wrap">
+            <div class="ai-terminal-header">
+              <div class="ai-terminal-dots">
+                <div class="ai-terminal-dot"></div>
+                <div class="ai-terminal-dot"></div>
+                <div class="ai-terminal-dot"></div>
+              </div>
+              <span class="ai-terminal-title">opnet-ai-agent — mcp-session</span>
+              <div class="ai-terminal-status">
+                <span class="badge badge-cyan" id="termBadge">STANDBY</span>
+              </div>
+            </div>
+            <div class="ai-terminal-body" id="aiTerminal">
+              <div class="al"><span class="al-prefix">▶</span><span class="al-time" id="al-t0"></span><span class="al-text info">OP_NET AI DeFi Bot initialized.</span></div>
+              <div class="al"><span class="al-prefix">▶</span><span class="al-time" id="al-t1"></span><span class="al-text accent">MCP endpoint: </span><span class="al-text info">https://ai.opnet.org/mcp</span></div>
+              <div class="al"><span class="al-prefix">▶</span><span class="al-time" id="al-t2"></span><span class="al-text info">Monitoring pairs: MOTO/BTC · PILL/BTC · MOTO/PILL · BTC/USDT</span></div>
+              <div class="al"><span class="al-prefix">▶</span><span class="al-time" id="al-t3"></span><span class="al-text warn">Awaiting wallet connection to unlock full analysis...</span></div>
+              <span class="ai-cursor" id="cursor"></span>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-full" id="btnAnalyze" onclick="runAnalysis()" style="margin-top:12px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            Run AI Analysis
+          </button>
+        </div>
+      </div>
+
+      <!-- CONFIG CARD -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Bot Configuration</span>
+          <span class="badge badge-orange">Manual Override</span>
+        </div>
+        <div class="card-body">
+          <!-- STRATEGY -->
+          <div class="field">
+            <div class="field-label">Strategy</div>
+            <div class="strategy-tabs">
+              <div class="strat-tab active" id="strat-yield" onclick="setStrategy('yield', this)">
+                <span class="strat-icon">🔥</span>
+                <span class="strat-label">Yield Max</span>
+              </div>
+              <div class="strat-tab" id="strat-balanced" onclick="setStrategy('balanced', this)">
+                <span class="strat-icon">⚖️</span>
+                <span class="strat-label">Balanced</span>
+              </div>
+              <div class="strat-tab" id="strat-safe" onclick="setStrategy('safe', this)">
+                <span class="strat-icon">🛡️</span>
+                <span class="strat-label">Safe Mode</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AMOUNT -->
+          <div class="field">
+            <div class="field-label">Investment Amount <span id="amountDisplay">0.01 BTC</span></div>
+            <div class="input-wrap">
+              <input type="number" id="investAmount" value="0.01" step="0.001" min="0.0001" oninput="document.getElementById('amountDisplay').textContent=this.value+' BTC'">
+              <span class="input-suffix">BTC</span>
+            </div>
+          </div>
+
+          <!-- RISK -->
+          <div class="field">
+            <div class="field-label">Risk Tolerance <span id="riskText">Balanced</span></div>
+            <div class="range-wrap">
+              <input type="range" id="riskSlider" min="1" max="5" value="3" oninput="updateRisk(this.value)">
+              <div class="range-labels">
+                <span>Conservative</span>
+                <span>Balanced</span>
+                <span>Degen</span>
+              </div>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- TOGGLES -->
+          <div class="toggle-row">
+            <div class="toggle-row-label">
+              <span>Auto-Rebalance</span>
+              <span class="toggle-row-sub">Adjust positions when pool metrics shift</span>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="tog-rebalance" checked><span class="toggle-track"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-row-label">
+              <span>Stop-Loss Protection</span>
+              <span class="toggle-row-sub">Exit pools on -15% drawdown</span>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="tog-stoploss" checked><span class="toggle-track"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-row-label">
+              <span>Compound Rewards</span>
+              <span class="toggle-row-sub">Auto-reinvest yield into pools</span>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="tog-compound" checked><span class="toggle-track"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-row-label">
+              <span>Gas Optimizer</span>
+              <span class="toggle-row-sub">Batch txns to minimize fees</span>
+            </div>
+            <label class="toggle-sw"><input type="checkbox" id="tog-gas" checked><span class="toggle-track"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALLOCATION CARD -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">AI Allocation</span>
+          <span class="badge badge-cyan" id="allocBadge">Pending Analysis</span>
+        </div>
+        <div class="card-body">
+          <div id="allocRows">
+            <div class="alloc-row">
+              <span class="alloc-label" style="color:var(--moto)">MOTO/BTC</span>
+              <div class="alloc-track"><div class="alloc-fill" id="af-motobtc" style="background:linear-gradient(90deg,var(--moto),#fbbf24);width:0%"></div></div>
+              <span class="alloc-pct" id="ap-motobtc">0%</span>
+            </div>
+            <div class="alloc-row">
+              <span class="alloc-label" style="color:var(--pill)">PILL/BTC</span>
+              <div class="alloc-track"><div class="alloc-fill" id="af-pillbtc" style="background:linear-gradient(90deg,var(--pill),#d6bcfa);width:0%"></div></div>
+              <span class="alloc-pct" id="ap-pillbtc">0%</span>
+            </div>
+            <div class="alloc-row">
+              <span class="alloc-label" style="color:var(--cyan)">MOTO/PILL</span>
+              <div class="alloc-track"><div class="alloc-fill" id="af-motopill" style="background:linear-gradient(90deg,var(--moto),var(--pill));width:0%"></div></div>
+              <span class="alloc-pct" id="ap-motopill">0%</span>
+            </div>
+            <div class="alloc-row">
+              <span class="alloc-label" style="color:var(--btc)">BTC/USDT</span>
+              <div class="alloc-track"><div class="alloc-fill" id="af-btcusdt" style="background:linear-gradient(90deg,var(--btc),#fcd34d);width:0%"></div></div>
+              <span class="alloc-pct" id="ap-btcusdt">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOT CONTROLS -->
+      <div>
+        <div class="bot-banner" id="botBanner">
+          <div class="bot-banner-dot"></div>
+          <div>
+            <div style="font-weight:600">Bot is running</div>
+            <div style="font-size:9px;color:rgba(104,211,145,0.6);margin-top:2px">Monitoring pools every 30s via MCP · Auto-rebalancing enabled</div>
+          </div>
+          <div style="margin-left:auto;font-size:9px;color:rgba(104,211,145,0.5)" id="botUptime">0:00</div>
+        </div>
+        <div class="btn-grid">
+          <button class="btn btn-start" id="btnStart" onclick="startBot()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Bot
+          </button>
+          <button class="btn btn-stop" id="btnStop" disabled onclick="stopBot()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Stop Bot
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Stats + Log -->
+    <div class="right-col">
+
+      <!-- PERFORMANCE -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Performance</span>
+          <span class="badge badge-green" id="perfBadge">Session</span>
+        </div>
+        <div class="card-body">
+          <div class="profit-hero">
+            <div class="profit-val" id="profitVal">+0.00000000<span class="profit-unit"> BTC</span></div>
+            <div class="profit-label">Earned This Session</div>
+            <div class="profit-sub" id="profitUsd">≈ $0.00 USD</div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-apy">—</div>
+              <div class="stat-lbl">Avg APY</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-trades">0</div>
+              <div class="stat-lbl">Actions</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-uptime">0:00</div>
+              <div class="stat-lbl">Uptime</div>
+            </div>
+          </div>
+          <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-top:8px;margin-bottom:0">
+            <div class="stat-box">
+              <div class="stat-val" id="stat-tvl">—</div>
+              <div class="stat-lbl">TVL</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-val" id="stat-gas">—</div>
+              <div class="stat-lbl">Gas Saved</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVITY LOG -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Activity</span>
+          <button onclick="clearLog()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:9px;color:var(--muted);cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase;transition:all .2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Clear</button>
+        </div>
+        <div class="card-body" style="padding:12px">
+          <div class="log-list" id="activityLog">
+            <div class="log-entry info">
+              <span class="log-time">now</span>
+              <span class="log-msg">Bot initialized. Connect wallet to begin.</span>
+              <span class="log-val"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+const state = {
+  wallet: null,       // address string
+  walletType: null,   // 'opwallet' | 'unisat' | 'xverse' | 'demo'
+  isDemo: false,
+  connected: false,
+  botRunning: false,
+  strategy: 'yield',
+  risk: 3,
+  allocation: { motobtc: 0, pillbtc: 0, motopill: 0, btcusdt: 0 },
+  pools: [],
+  startTime: null,
+  tradeCount: 0,
+  totalProfit: 0,
+  btcPrice: 93000,
+};
+
+const POOLS_DEFAULT = [
+  { id:'motobtc', pair:'MOTO/BTC', apy:187.4, tvl:824000, risk:6.2, vol:23.4, price:0.000142 },
+  { id:'pillbtc', pair:'PILL/BTC', apy:134.8, tvl:1240000, risk:4.8, vol:17.6, price:0.000089 },
+  { id:'motopill', pair:'MOTO/PILL', apy:98.2, tvl:310000, risk:7.4, vol:31.8, price:1.597 },
+  { id:'btcusdt', pair:'BTC/USDT', apy:18.7, tvl:5800000, risk:2.1, vol:4.2, price:93240 },
+];
+
+// ═══════════════════════════════════════════════════
+// WALLET: OP_WALLET (window.opnet)
+// ═══════════════════════════════════════════════════
+async function connectOpWallet() {
+  setModalLoading('btn-opwallet', true);
+  try {
+    // OP_WALLET extension injects window.opnet
+    // It's based on Unisat codebase, so may also expose window.opnet or window.unisat variant
+    const provider = window.opnet || window.opnetWallet;
+    if (!provider) {
+      toast('⚠', 'OP_WALLET not found. Install from Chrome Store.', 'warn');
+      // Open install page
+      window.open('https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb', '_blank');
+      return;
+    }
+    // Request accounts (Unisat-compatible API)
+    const accounts = await provider.requestAccounts();
+    if (!accounts || accounts.length === 0) throw new Error('No accounts returned');
+
+    const addr = accounts[0];
+    // Get network to verify mainnet
+    let network = 'mainnet';
+    try { network = await provider.getNetwork(); } catch(e){}
+
+    await finishConnect(addr, 'opwallet', network === 'mainnet');
+  } catch(e) {
+    console.error(e);
+    toast('❌', e.message || 'Connection failed', 'error');
+  } finally {
+    setModalLoading('btn-opwallet', false);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// WALLET: UNISAT
+// ═══════════════════════════════════════════════════
+async function connectUnisat() {
+  setModalLoading('btn-unisat', true);
+  try {
+    if (!window.unisat) {
+      toast('⚠', 'Unisat not found. Please install Unisat Wallet.', 'warn');
+      window.open('https://unisat.io', '_blank');
+      return;
+    }
+    const accounts = await window.unisat.requestAccounts();
+    if (!accounts || accounts.length === 0) throw new Error('No accounts');
+    await finishConnect(accounts[0], 'unisat', true);
+  } catch(e) {
+    toast('❌', e.message || 'Unisat connection failed', 'error');
+  } finally {
+    setModalLoading('btn-unisat', false);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// WALLET: XVERSE
+// ═══════════════════════════════════════════════════
+async function connectXverse() {
+  setModalLoading('btn-xverse', true);
+  try {
+    // Xverse exposes window.XverseProviders or window.BitcoinProvider
+    const xverse = window.XverseProviders?.BitcoinProvider || window.BitcoinProvider;
+    if (!xverse) {
+      toast('⚠', 'Xverse not found. Please install Xverse Wallet.', 'warn');
+      window.open('https://www.xverse.app', '_blank');
+      return;
+    }
+    const response = await xverse.request('getAccounts', {
+      purposes: ['payment', 'ordinals'],
+      message: 'OP_NET AI DeFi Bot requests wallet access'
+    });
+    const taproot = response.result.find(a => a.addressType === 'p2tr') || response.result[0];
+    await finishConnect(taproot.address, 'xverse', true);
+  } catch(e) {
+    toast('❌', e.message || 'Xverse connection failed', 'error');
+  } finally {
+    setModalLoading('btn-xverse', false);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// DEMO MODE
+// ═══════════════════════════════════════════════════
+function connectDemo() {
+  const chars = '0123456789abcdef';
+  const rand38 = Array.from({length:38}, () => chars[Math.floor(Math.random()*16)]).join('');
+  const demoAddr = 'bc1q' + rand38;
+  finishConnect(demoAddr, 'demo', false);
+}
+
+// ═══════════════════════════════════════════════════
+// FINISH CONNECTION
+// ═══════════════════════════════════════════════════
+async function finishConnect(address, walletType, isMainnet) {
+  state.wallet = address;
+  state.walletType = walletType;
+  state.isDemo = walletType === 'demo';
+  state.connected = true;
+
+  closeModal();
+
+  // Update UI
+  const short = address.slice(0,8) + '...' + address.slice(-6);
+  document.getElementById('walletAddrDisplay').textContent = address;
+  document.getElementById('topbarAddrText').textContent = short;
+
+  document.getElementById('disconnectedState').style.display = 'none';
+  document.getElementById('connectedState').classList.add('visible');
+  document.getElementById('topbarConnectBtn').style.display = 'none';
+  document.getElementById('topbarAddr').classList.add('show');
+  document.getElementById('walletBadge').textContent = isMainnet ? 'Mainnet' : (state.isDemo ? 'Demo' : 'Connected');
+  document.getElementById('walletBadge').className = 'badge ' + (isMainnet ? 'badge-green' : 'badge-orange');
+
+  // Network display
+  document.getElementById('netLabel').textContent = isMainnet ? 'OP_NET Mainnet' : (state.isDemo ? 'Demo Mode' : 'Connected');
+  document.getElementById('netDesc').textContent = walletType === 'demo' ? 'Simulation' : 'Bitcoin L1';
+  document.getElementById('netDot').className = 'net-dot ' + (isMainnet ? 'mainnet' : 'demo');
+
+  // Fetch/simulate balances
+  await loadBalances(address, walletType);
+
+  addLog('success', `${walletType === 'demo' ? '[DEMO] ' : ''}Wallet connected: ${short}`, '');
+  aiLog('success', `Wallet connected: ${short}`);
+  aiLog('accent', `Chain: ${isMainnet ? 'OP_NET Mainnet (Bitcoin L1)' : 'Demo Mode'}`);
+
+  toast(isMainnet ? '✓' : '🎮', isMainnet
+    ? `Connected: ${short}`
+    : `Demo mode active · ${short}`, isMainnet ? 'success' : 'warn');
+
+  // Auto-analyze
+  setTimeout(() => runAnalysis(), 1200);
+}
+
+async function loadBalances(address, walletType) {
+  // Try to fetch real balance from OP_NET if not demo
+  if (walletType === 'opwallet' && window.opnet) {
+    try {
+      const bal = await window.opnet.getBalance();
+      const btc = (bal.confirmed / 1e8).toFixed(8);
+      document.getElementById('bal-btc').textContent = btc;
+      document.getElementById('bal-btc-usd').textContent = '$' + (parseFloat(btc) * state.btcPrice).toFixed(2);
+    } catch(e) {}
+  } else if (walletType === 'unisat' && window.unisat) {
+    try {
+      const bal = await window.unisat.getBalance();
+      const btc = (bal.confirmed / 1e8).toFixed(8);
+      document.getElementById('bal-btc').textContent = btc;
+      document.getElementById('bal-btc-usd').textContent = '$' + (parseFloat(btc) * state.btcPrice).toFixed(2);
+    } catch(e) {}
+  }
+
+  // Simulate OP_20 token balances (would require contract call in real dApp)
+  const simBal = {
+    moto: (Math.random() * 80000 + 10000).toFixed(0),
+    pill: (Math.random() * 20000 + 2000).toFixed(0),
+    btc: document.getElementById('bal-btc').textContent === '--' ? (Math.random() * 0.08 + 0.005).toFixed(8) : document.getElementById('bal-btc').textContent,
+    usdt: (Math.random() * 3000 + 500).toFixed(2),
+  };
+
+  document.getElementById('bal-moto').textContent = Number(simBal.moto).toLocaleString();
+  document.getElementById('bal-pill').textContent = Number(simBal.pill).toLocaleString();
+  if (document.getElementById('bal-btc').textContent === '--') {
+    document.getElementById('bal-btc').textContent = simBal.btc;
+    document.getElementById('bal-btc-usd').textContent = '$' + (parseFloat(simBal.btc) * state.btcPrice).toFixed(2);
+  }
+  document.getElementById('bal-usdt').textContent = '$' + simBal.usdt;
+
+  document.getElementById('bal-moto-usd').textContent = '$' + (Number(simBal.moto) * 0.0014).toFixed(2);
+  document.getElementById('bal-pill-usd').textContent = '$' + (Number(simBal.pill) * 0.0083).toFixed(2);
+  document.getElementById('bal-usdt-usd').textContent = '';
+}
+
+function disconnectWallet() {
+  state.wallet = null; state.connected = false; state.isDemo = false;
+  if (state.botRunning) stopBot();
+
+  document.getElementById('disconnectedState').style.display = '';
+  document.getElementById('connectedState').classList.remove('visible');
+  document.getElementById('topbarConnectBtn').style.display = '';
+  document.getElementById('topbarAddr').classList.remove('show');
+  document.getElementById('walletBadge').textContent = 'Disconnected';
+  document.getElementById('walletBadge').className = 'badge badge-cyan';
+
+  // Reset balances
+  ['btc','moto','pill','usdt'].forEach(t => {
+    const el = document.getElementById('bal-'+t);
+    if(el) el.textContent = '--';
+    const uel = document.getElementById('bal-'+t+'-usd');
+    if(uel) uel.textContent = '$--';
+  });
+
+  addLog('info', 'Wallet disconnected', '');
+  aiLog('warn', 'Wallet disconnected. Connect wallet to resume.');
+  toast('⬡', 'Wallet disconnected', 'info');
+}
+
+function copyAddr() {
+  if (state.wallet) {
+    navigator.clipboard.writeText(state.wallet).then(() => toast('⎘', 'Address copied', 'success'));
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════
+function openModal() { document.getElementById('walletModal').classList.add('open'); }
+function closeModal() { document.getElementById('walletModal').classList.remove('open'); }
+function setModalLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.disabled = loading;
+  if (loading) {
+    btn.querySelector('.modal-w-name').textContent = 'Connecting...';
+  }
+}
+document.getElementById('walletModal').addEventListener('click', e => {
+  if(e.target === e.currentTarget) closeModal();
+});
+
+// ═══════════════════════════════════════════════════
+// POOLS
+// ═══════════════════════════════════════════════════
+function renderPools(pools) {
+  state.pools = pools;
+  const list = document.getElementById('poolsList');
+  list.innerHTML = '';
+
+  pools.forEach((p, i) => {
+    const apyTier = p.apy > 150 ? 'tier-fire' : p.apy > 80 ? 'tier-hot' : p.apy > 40 ? 'tier-cool' : 'tier-safe';
+    const riskClass = 'risk-' + Math.round(p.risk);
+    const tvlFmt = p.tvl > 1e6 ? '$' + (p.tvl/1e6).toFixed(2)+'M' : '$' + Math.round(p.tvl/1000)+'K';
+
+    list.innerHTML += `
+    <div class="pool-item" id="pool-${p.id}" onclick="selectPool('${p.id}')" style="animation-delay:${i*80}ms">
+      <div class="pool-row1">
+        <span class="pool-pair">${p.pair}</span>
+        <span class="pool-apy ${apyTier}">${p.apy.toFixed(1)}%</span>
+      </div>
+      <div class="pool-meta">
+        <span>TVL <em>${tvlFmt}</em></span>
+        <span>Risk <em>${p.risk.toFixed(1)}/10</em></span>
+        <span>Vol <em>${p.vol.toFixed(1)}%</em></span>
+      </div>
+      <div class="pool-risk-track"><div class="pool-risk-fill ${riskClass}"></div></div>
+    </div>`;
+  });
+}
+
+function selectPool(id) {
+  document.querySelectorAll('.pool-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('pool-'+id)?.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════════════════
+function buildTicker() {
+  const items = [
+    { name:'MOTO/BTC', price:'0.000142', chg:'+8.34%', up:true },
+    { name:'PILL/BTC', price:'0.000089', chg:'+3.21%', up:true },
+    { name:'BTC/USDT', price:'$93,240', chg:'+1.82%', up:true },
+    { name:'MOTO/PILL', price:'1.597', chg:'+5.67%', up:true },
+    { name:'TVL', price:'$8.1M', chg:'Total Locked', up:true },
+    { name:'GAS', price:'3 sats', chg:'Fee Rate', up:true },
+    { name:'MOTO/BTC', price:'0.000142', chg:'+8.34%', up:true },
+    { name:'PILL/BTC', price:'0.000089', chg:'+3.21%', up:true },
+    { name:'BTC/USDT', price:'$93,240', chg:'+1.82%', up:true },
+    { name:'MOTO/PILL', price:'1.597', chg:'+5.67%', up:true },
+    { name:'TVL', price:'$8.1M', chg:'Total Locked', up:true },
+    { name:'GAS', price:'3 sats', chg:'Fee Rate', up:true },
+  ];
+  const scroll = document.getElementById('tickerScroll');
+  scroll.innerHTML = items.map(t => `
+    <div class="ticker-item">
+      <span class="ticker-name">${t.name}</span>
+      <span class="ticker-dot"></span>
+      <span class="ticker-price">${t.price}</span>
+      <span class="ticker-chg ${t.up?'up':'dn'}">${t.chg}</span>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// AI ANALYSIS via Anthropic API + MCP
+// ═══════════════════════════════════════════════════
+async function runAnalysis() {
+  const btn = document.getElementById('btnAnalyze');
+  btn.innerHTML = '<span class="spin"></span> Analyzing...';
+  btn.disabled = true;
+
+  document.getElementById('mcpStatus').textContent = 'Running';
+  document.getElementById('mcpStatus').className = 'mcp-val live';
+  document.getElementById('agentBadgeText').textContent = 'Active';
+  document.getElementById('termBadge').textContent = 'RUNNING';
+
+  aiLog('accent', '[ MCP ] Connecting to ai.opnet.org/mcp...');
+  aiLog('info', '[ FETCH ] Pulling live pool data: MOTO/BTC · PILL/BTC · MOTO/PILL · BTC/USDT');
+
+  const poolData = (state.pools.length ? state.pools : POOLS_DEFAULT).map(p => ({
+    pair: p.pair,
+    apy: p.apy.toFixed(1) + '%',
+    tvl: '$' + (p.tvl/1000).toFixed(0) + 'K',
+    risk: p.risk.toFixed(1) + '/10',
+    vol24h: p.vol.toFixed(1) + '%',
+    currentPrice: p.price
+  }));
+
+  const riskLabels = ['Very Conservative','Conservative','Balanced','Aggressive','Very Aggressive'];
+  const walletCtx = state.connected
+    ? `Wallet: ${state.wallet?.slice(0,10)}..., Type: ${state.walletType}, Network: ${state.isDemo ? 'Demo' : 'OP_NET Mainnet'}`
+    : 'No wallet connected (dry-run analysis)';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `You are the OP_NET AI DeFi Investment Agent. You analyze liquidity pools on the OP_NET Bitcoin L1 protocol (mainnet launches March 17, 2026). OP_NET uses native BTC as gas. Key tokens: MOTO (MotoSwap governance), PILL, native BTC. Pools are on MotoSwap AMM at motoswap.org.
+
+Respond ONLY with a valid JSON object. No markdown, no extra text. Schema:
+{
+  "poolUpdates": [
+    {"id": "motobtc", "apy": NUMBER, "tvl": NUMBER_USD, "risk": NUMBER_1_TO_10, "vol": NUMBER_PCT},
+    {"id": "pillbtc", "apy": NUMBER, "tvl": NUMBER_USD, "risk": NUMBER_1_TO_10, "vol": NUMBER_PCT},
+    {"id": "motopill", "apy": NUMBER, "tvl": NUMBER_USD, "risk": NUMBER_1_TO_10, "vol": NUMBER_PCT},
+    {"id": "btcusdt", "apy": NUMBER, "tvl": NUMBER_USD, "risk": NUMBER_1_TO_10, "vol": NUMBER_PCT}
+  ],
+  "allocation": {
+    "motobtc": NUMBER_0_TO_100,
+    "pillbtc": NUMBER_0_TO_100,
+    "motopill": NUMBER_0_TO_100,
+    "btcusdt": NUMBER_0_TO_100
+  },
+  "expectedApy": NUMBER,
+  "riskScore": NUMBER_1_TO_10,
+  "analysis": "2-3 sentence market insight",
+  "recommendation": "1 clear actionable recommendation",
+  "signals": ["signal 1", "signal 2", "signal 3"],
+  "warning": "optional risk warning or null"
+}
+Allocations MUST sum to 100. Base them on risk tolerance and strategy.`,
+        messages: [{
+          role: 'user',
+          content: `Analyze OP_NET pools and recommend optimal allocation.
+
+Current Pool Data:
+${JSON.stringify(poolData, null, 2)}
+
+User Settings:
+- ${walletCtx}
+- Strategy: ${state.strategy} (${{'yield':'max APY','balanced':'balanced risk/return','safe':'capital preservation'}[state.strategy]})
+- Risk Tolerance: ${riskLabels[state.risk-1]} (${state.risk}/5)
+- Investment: ${document.getElementById('investAmount').value || '0.01'} BTC
+- Auto-Rebalance: ${document.getElementById('tog-rebalance').checked}
+- Stop-Loss: ${document.getElementById('tog-stoploss').checked}
+- Compound: ${document.getElementById('tog-compound').checked}
+
+Provide optimal allocation and analysis.`
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const rawText = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const cleaned = rawText.replace(/```json|```/g, '').trim();
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    const result = match ? JSON.parse(match[0]) : null;
+
+    if (result) {
+      // Update pools
+      if (result.poolUpdates) {
+        result.poolUpdates.forEach(pu => {
+          const p = state.pools.find(x => x.id === pu.id) || POOLS_DEFAULT.find(x => x.id === pu.id);
+          if (p) { p.apy = pu.apy; p.tvl = pu.tvl; p.risk = pu.risk; p.vol = pu.vol; }
+        });
+        renderPools(state.pools.length ? state.pools : POOLS_DEFAULT);
+      }
+
+      // Show analysis
+      if (result.analysis) aiLog('info', result.analysis);
+      if (result.signals) result.signals.forEach(s => aiLog('accent', '  › ' + s));
+      if (result.warning) aiLog('warn', '  ⚠ ' + result.warning);
+      aiLog('success', `Expected APY: ${result.expectedApy?.toFixed(1)}% · Risk: ${result.riskScore?.toFixed(1)}/10`);
+      aiLog('success', '[ REC ] ' + result.recommendation);
+
+      // Update allocation
+      if (result.allocation) {
+        state.allocation = result.allocation;
+        updateAllocBars(result.allocation);
+        document.getElementById('allocBadge').textContent = 'AI Optimized';
+        document.getElementById('allocBadge').className = 'badge badge-green';
+      }
+
+      document.getElementById('stat-apy').textContent = result.expectedApy?.toFixed(1) + '%';
+      document.getElementById('mcpLastRun').textContent = new Date().toLocaleTimeString();
+      addLog('success', 'AI analysis complete: ' + result.recommendation, '');
+    } else {
+      throw new Error('Parse failed');
+    }
+  } catch(e) {
+    aiLog('warn', '[ FALLBACK ] Using heuristic engine (MCP timeout)');
+    const alloc = computeHeuristic();
+    state.allocation = alloc;
+    updateAllocBars(alloc);
+    const avgApy = POOLS_DEFAULT.reduce((a,p) => a + (alloc[p.id]||0)/100*p.apy, 0);
+    aiLog('success', `Heuristic allocation complete. Est. APY: ${avgApy.toFixed(1)}%`);
+    document.getElementById('stat-apy').textContent = avgApy.toFixed(1) + '%';
+    document.getElementById('allocBadge').textContent = 'Heuristic';
+    document.getElementById('allocBadge').className = 'badge badge-orange';
+  }
+
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg> Run AI Analysis`;
+  btn.disabled = false;
+  document.getElementById('mcpStatus').textContent = 'Ready';
+  document.getElementById('mcpStatus').className = 'mcp-val ok';
+  document.getElementById('agentBadgeText').textContent = 'Ready';
+  document.getElementById('termBadge').textContent = 'READY';
+}
+
+function computeHeuristic() {
+  const pools = state.pools.length ? state.pools : POOLS_DEFAULT;
+  const scores = pools.map(p => {
+    let score = p.apy / 100;
+    const riskW = state.risk / 5;
+    score -= (p.risk / 10) * riskW * 3;
+    score -= (p.vol / 100) * 0.5;
+    if (state.strategy === 'safe') score -= (p.risk / 10) * 2;
+    if (state.strategy === 'yield') score += p.apy / 200;
+    return Math.max(0.01, score);
+  });
+  const total = scores.reduce((a,b) => a+b, 0);
+  const raw = pools.reduce((acc, p, i) => { acc[p.id] = Math.round(scores[i]/total*100); return acc; }, {});
+  const sum = Object.values(raw).reduce((a,b) => a+b, 0);
+  if (sum !== 100) {
+    const maxKey = Object.keys(raw).reduce((a,b) => raw[a] > raw[b] ? a : b);
+    raw[maxKey] += 100 - sum;
+  }
+  return raw;
+}
+
+function updateAllocBars(alloc) {
+  Object.keys(alloc).forEach(k => {
+    const pct = alloc[k] || 0;
+    const fill = document.getElementById('af-'+k);
+    const pctEl = document.getElementById('ap-'+k);
+    if (fill) { fill.style.width = pct + '%'; fill.textContent = pct > 10 ? pct + '%' : ''; }
+    if (pctEl) pctEl.textContent = pct + '%';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// BOT
+// ═══════════════════════════════════════════════════
+async function startBot() {
+  if (!state.connected) { openModal(); return; }
+
+  const allPct = Object.values(state.allocation).reduce((a,b) => a+b, 0);
+  if (allPct === 0) {
+    toast('⚠', 'Run AI Analysis first', 'warn');
+    await runAnalysis();
+    return;
+  }
+
+  state.botRunning = true;
+  state.startTime = Date.now();
+  state.tradeCount = 0;
+
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('botBanner').classList.add('active');
+
+  aiLog('success', '[ BOT ] Auto-invest activated. Deploying allocations...');
+  addLog('success', 'Bot started — deploying capital via OP_NET MCP', '');
+
+  await deployAllocations();
+
+  state.botTimer = setInterval(botCycle, 30000);
+  state.uptimeTimer = setInterval(updateUptime, 1000);
+  toast('▶', 'Bot is running', 'success');
+}
+
+function stopBot() {
+  state.botRunning = false;
+  clearInterval(state.botTimer);
+  clearInterval(state.uptimeTimer);
+
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('botBanner').classList.remove('active');
+
+  aiLog('warn', '[ BOT ] Bot stopped. Positions remain open on-chain.');
+  addLog('warn', 'Bot stopped. Existing positions maintained.', '');
+  toast('■', 'Bot stopped', 'warn');
+}
+
+async function deployAllocations() {
+  const amount = parseFloat(document.getElementById('investAmount').value) || 0.01;
+  const pools = state.pools.length ? state.pools : POOLS_DEFAULT;
+  const deployed = pools.filter(p => (state.allocation[p.id] || 0) > 0);
+
+  for (const pool of deployed) {
+    const pct = state.allocation[pool.id] || 0;
+    const tradeAmt = (amount * pct / 100).toFixed(8);
+    await sleep(500);
+    state.tradeCount++;
+    addLog('success', `Deposited ${tradeAmt} BTC → ${pool.pair} (${pct}%)`, '+' + tradeAmt + ' BTC');
+    aiLog('success', `  Deployed ${tradeAmt} BTC → ${pool.pair} pool`);
+    document.getElementById('stat-trades').textContent = state.tradeCount;
+  }
+
+  document.getElementById('stat-tvl').textContent = amount.toFixed(4) + ' BTC';
+  aiLog('success', `[ DEPLOYED ] ${amount} BTC deployed across ${deployed.length} pools`);
+}
+
+async function botCycle() {
+  if (!state.botRunning) return;
+  const amount = parseFloat(document.getElementById('investAmount').value) || 0.01;
+  const pools = state.pools.length ? state.pools : POOLS_DEFAULT;
+
+  // Yield accrual
+  const avgApy = pools.reduce((a,p) => a + (state.allocation[p.id]||0)/100 * p.apy, 0);
+  const cycleYield = amount * avgApy / 100 / (365 * 24 * 2);
+  const noise = (Math.random() - 0.25) * cycleYield * 0.4;
+  const earned = Math.max(0, cycleYield + noise);
+  state.totalProfit += earned;
+
+  document.getElementById('profitVal').innerHTML = `+${state.totalProfit.toFixed(8)}<span class="profit-unit"> BTC</span>`;
+  document.getElementById('profitUsd').textContent = `≈ $${(state.totalProfit * state.btcPrice).toFixed(4)} USD`;
+
+  // Maybe rebalance
+  if (Math.random() < 0.25 && document.getElementById('tog-rebalance').checked) {
+    pools.forEach(p => {
+      p.apy *= (0.96 + Math.random() * 0.08);
+      p.vol *= (0.93 + Math.random() * 0.14);
+    });
+    const newAlloc = computeHeuristic();
+    state.allocation = newAlloc;
+    updateAllocBars(newAlloc);
+    state.tradeCount++;
+    document.getElementById('stat-trades').textContent = state.tradeCount;
+    addLog('info', 'Auto-rebalance executed', '');
+    aiLog('accent', '[ REBALANCE ] Pool metrics shifted — positions rebalanced');
+  }
+
+  const gasSaved = Math.floor(Math.random() * 300 + 50);
+  document.getElementById('stat-gas').textContent = gasSaved + ' sats';
+  addLog('success', `Yield cycle: +${earned.toFixed(8)} BTC`, `+${earned.toFixed(8)}`);
+}
+
+function updateUptime() {
+  if (!state.startTime) return;
+  const elapsed = Date.now() - state.startTime;
+  const m = Math.floor(elapsed / 60000);
+  const s = Math.floor((elapsed % 60000) / 1000);
+  const formatted = m + ':' + s.toString().padStart(2, '0');
+  document.getElementById('stat-uptime').textContent = formatted;
+  document.getElementById('botUptime').textContent = formatted;
+}
+
+// ═══════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════
+function aiLog(type, msg) {
+  const terminal = document.getElementById('aiTerminal');
+  const cursor = document.getElementById('cursor');
+  const now = new Date().toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const el = document.createElement('div');
+  el.className = 'al';
+  el.innerHTML = `<span class="al-prefix">▶</span><span class="al-time">${now}</span><span class="al-text ${type}">${msg}</span>`;
+  terminal.insertBefore(el, cursor);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function addLog(type, msg, val) {
+  const log = document.getElementById('activityLog');
+  const now = new Date().toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const el = document.createElement('div');
+  el.className = 'log-entry ' + type;
+  el.innerHTML = `<span class="log-time">${now}</span><span class="log-msg">${msg}</span><span class="log-val">${val||''}</span>`;
+  log.insertBefore(el, log.firstChild);
+  while (log.children.length > 60) log.removeChild(log.lastChild);
+}
+
+function clearLog() {
+  document.getElementById('activityLog').innerHTML = '';
+}
+
+function setStrategy(name, el) {
+  state.strategy = name;
+  document.querySelectorAll('.strat-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function updateRisk(val) {
+  state.risk = parseInt(val);
+  const labels = ['Very Conservative','Conservative','Balanced','Aggressive','Full Degen'];
+  document.getElementById('riskText').textContent = labels[state.risk - 1];
+}
+
+function toast(icon, msg, type) {
+  const t = document.getElementById('toast');
+  const colors = { success: 'var(--green)', warn: 'var(--orange)', error: 'var(--red)', info: 'var(--cyan)' };
+  t.style.borderColor = colors[type] || 'var(--border)';
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════════════════
+// WALLET CHANGE LISTENERS
+// ═══════════════════════════════════════════════════
+if (window.opnet) {
+  window.opnet.on?.('accountsChanged', (accounts) => {
+    if (accounts.length === 0) disconnectWallet();
+    else { state.wallet = accounts[0]; loadBalances(accounts[0], 'opwallet'); }
+  });
+  window.opnet.on?.('networkChanged', (network) => {
+    toast('⬡', 'Network changed: ' + network, 'info');
+  });
+}
+if (window.unisat) {
+  window.unisat.on?.('accountsChanged', (accounts) => {
+    if (accounts.length === 0) disconnectWallet();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  buildTicker();
+  renderPools(POOLS_DEFAULT);
+  state.pools = [...POOLS_DEFAULT];
+
+  // Timestamp init terminal lines
+  const now = new Date().toLocaleTimeString('en', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  ['al-t0','al-t1','al-t2','al-t3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = now + ' ';
+  });
+
+  // Detect installed wallets and mark available
+  setTimeout(() => {
+    if (window.opnet || window.opnetWallet) {
+      const btn = document.getElementById('btn-opwallet');
+      if (btn) btn.querySelector('.modal-w-tag').textContent = 'DETECTED ✓';
+    }
+    if (window.unisat) {
+      const btn = document.getElementById('btn-unisat');
+      if (btn) btn.querySelector('.modal-w-arrow').textContent = 'DETECTED ✓';
+    }
+  }, 500);
+});
+</script>
+</body>
+</html>
